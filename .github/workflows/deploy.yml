@@ -1,0 +1,40 @@
+name: Deploy to YummyJars
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '*.md'
+      - '.github/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Get deploy key from Key Vault
+        id: kv
+        run: |
+          KEY=$(az keyvault secret show --vault-name hoasis-kv --name yummyjars-deploy-key-public --query value -o tsv)
+          echo "::add-mask::$KEY"
+          echo "key=$KEY" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy to yummyjars.com
+        run: |
+          tar czf - \
+            --exclude='.git' \
+            --exclude='deploy.sh' \
+            --exclude='deploy-lan.sh' \
+            --exclude='.github' \
+            --exclude='TODO.md' \
+            --exclude='video-plan.md' \
+            . | curl -sSf -X POST \
+              -H "X-API-Key: ${{ steps.kv.outputs.key }}" \
+              -H "Content-Type: application/gzip" \
+              --data-binary @- \
+              https://yummyjars.com/api/deploy/opensnipping
