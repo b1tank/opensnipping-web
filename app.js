@@ -1,5 +1,5 @@
 // OpenSnipping - Screenshot and Annotation Tool
-import { initI18n, t, applyTranslations, setupLanguagePicker } from '../lib/i18n.js';
+import { initI18n, t, applyTranslations, setupLanguagePicker } from './lib/i18n.js';
 
 // ============ Translations ============
 const TRANSLATIONS = {
@@ -63,67 +63,6 @@ const TRANSLATIONS = {
 		stopRecording: 'Stop Recording',
 		discard: 'Discard',
 		saveVideo: 'Save Video'
-	},
-	zh: {
-		// Page title
-		pageTitle: '小画剪',
-
-		// Toolbar buttons
-		newSnip: '新建',
-		newSnipTitle: '新建截图',
-		delay: '延时',
-		delayTitle: '设置截图前的延迟',
-		copyTitle: '复制',
-		saveTitle: '保存',
-		saveOptionsTitle: '保存选项',
-		penTitle: '画笔',
-		eraserTitle: '橡皮擦',
-		undoTitle: '撤销',
-		redoTitle: '重做',
-		languageTitle: '语言',
-
-		// Delay menu
-		noDelay: '无延时',
-		oneSecond: '1 秒',
-		twoSeconds: '2 秒',
-		threeSeconds: '3 秒',
-		fourSeconds: '4 秒',
-		fiveSeconds: '5 秒',
-		delayFormat: '延时 ({0}秒)',
-		newSnipFormat: '新建截图 ({0}秒)',
-		newFormat: '新建 ({0}秒)',
-
-		// Save menu
-		defaultSave: '默认',
-		saveAs: '另存为...',
-
-		// Status messages
-		autoDelayNotice: '全屏截图自动延迟 5 秒',
-		cropModeHint: '点击并拖动以选择裁剪区域',
-		penModeHint: '要裁剪图片，请再次点击画笔退出标注模式',
-
-		// Hero/Drop zone
-		newSnipBtn: '新建截图',
-		heroOr: '或',
-		dropHintMain: '拖放图片到此处、粘贴或点击打开',
-		dropHintSub: '支持 JPG、PNG、GIF 和 WebP 格式',
-
-		// Confirm dialogs
-		confirmLeave: '您有未保存的更改。确定要离开吗？',
-		confirmNew: '您有未保存的更改。确定要开始新截图吗？',
-		confirmExit: '您有未保存的更改。确定要退出吗？',
-
-		// Language switcher
-		switchToEnglish: 'Switch to English',
-		switchToChinese: '切换到中文',
-
-		// Video recording
-		record: '录屏',
-		recordTitle: '录制屏幕',
-		recording: '录制中',
-		stopRecording: '停止录制',
-		discard: '丢弃',
-		saveVideo: '保存视频'
 	}
 };
 
