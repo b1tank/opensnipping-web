@@ -28,11 +28,15 @@ jobs:
         run: |
           tar czf - \
             --exclude='.git' \
-            --exclude='deploy.sh' \
-            --exclude='deploy-lan.sh' \
+            --exclude='.env' \
+            --exclude='.env.*' \
+            --exclude='scripts' \
+            --exclude='tests' \
             --exclude='.github' \
             --exclude='TODO.md' \
             --exclude='video-plan.md' \
+            --exclude='LAUNCH.md' \
+            --exclude='.playwright-mcp' \
             . | curl -sSf -X POST \
               -H "X-API-Key: ${{ steps.kv.outputs.key }}" \
               -H "Content-Type: application/gzip" \

@@ -236,6 +236,135 @@ body {
   border-color: #5568d3;
 }
 
+/* Style picker (color/width/fill) */
+.style-btn-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.style-btn-wrapper .toolbar-btn {
+  padding: 6px 8px;
+  gap: 4px;
+}
+
+.style-swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #d10000;
+  border: 2px solid white;
+  box-shadow: 0 0 0 1px #adb5bd;
+  display: inline-block;
+}
+
+.style-menu {
+  min-width: 180px;
+  padding: 10px 12px;
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.style-menu.show {
+  display: flex;
+}
+
+.style-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.style-label {
+  font-size: 11px;
+  color: #6c757d;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.color-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.color-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 0 0 1px #ced4da;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.1s ease, box-shadow 0.15s ease;
+}
+
+.color-swatch:hover {
+  transform: scale(1.1);
+}
+
+.color-swatch.active {
+  box-shadow: 0 0 0 2px #667eea;
+}
+
+.width-row {
+  display: flex;
+  gap: 6px;
+}
+
+.width-opt {
+  flex: 1;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.width-opt:hover {
+  background: #f8f9fa;
+  border-color: #adb5bd;
+}
+
+.width-opt.active {
+  background: #ebf4ff;
+  border-color: #667eea;
+}
+
+.width-dot {
+  display: inline-block;
+  background: currentColor;
+  color: #495057;
+  border-radius: 50%;
+}
+
+.width-opt.active .width-dot {
+  color: #667eea;
+}
+
+.fill-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #495057;
+  cursor: pointer;
+  user-select: none;
+  padding-top: 4px;
+  border-top: 1px solid #f1f3f5;
+}
+
+.fill-row input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+  accent-color: #667eea;
+}
+
 .split-btn-wrapper {
   display: flex;
   align-items: center;

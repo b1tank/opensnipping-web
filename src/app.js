@@ -16,6 +16,11 @@ const TRANSLATIONS = {
 		saveTitle: 'Save',
 		saveOptionsTitle: 'Save Options',
 		penTitle: 'Pen',
+		rectTitle: 'Rectangle',
+		styleTitle: 'Stroke style',
+		styleColor: 'Color',
+		styleWidth: 'Width',
+		styleFillRect: 'Fill rectangle',
 		eraserTitle: 'Eraser',
 		undoTitle: 'Undo',
 		redoTitle: 'Redo',
@@ -40,6 +45,7 @@ const TRANSLATIONS = {
 		autoDelayNotice: 'Auto-delaying 5s for entire screen',
 		cropModeHint: 'Click and drag to select area to crop',
 		penModeHint: 'To crop image, click Pen again to exit annotation mode',
+		rectModeHint: 'Click and drag to draw a rectangle',
 
 		// Hero/Drop zone
 		newSnipBtn: 'New Snip',
@@ -75,20 +81,23 @@ initI18n({
 
 // ============ Constants ============
 const CANVAS_PADDING_PX = 0;
-const PEN_COLOR = '#d10000';
-const PEN_WIDTH = 3;
+const DEFAULT_PEN_COLOR = '#d10000';
+const DEFAULT_PEN_WIDTH = 4;
 const POST_PICKER_CAPTURE_DELAY_MS = 250;
 
-// Custom cursor: black dot with white border for visibility on both light and dark backgrounds.
-// Hotspot is at the center of the dot.
-const PEN_CURSOR_SVG = `
-<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 10 10">
-  <circle cx="5" cy="5" r="3" fill="white" />
-  <circle cx="5" cy="5" r="2" fill="black" />
-</svg>
-`.trim();
+// ============ Mutable style state (color/width/fill) ============
+// Each new stroke captures these at pointer-down time; existing strokes keep their own.
+let currentColor = DEFAULT_PEN_COLOR;
+let currentWidth = DEFAULT_PEN_WIDTH;
+let rectFill = false;
 
-const PEN_CURSOR_URL = `url("data:image/svg+xml;charset=utf-8,${encodeURIComponent(PEN_CURSOR_SVG)}") 5 5, crosshair`;
+// Custom cursor: a colored dot with white border for visibility on any background.
+// The hotspot is the center; the color tracks `currentColor`.
+function buildPenCursorUrl(color) {
+	const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 10 10"><circle cx="5" cy="5" r="3" fill="white"/><circle cx="5" cy="5" r="2" fill="${color}"/></svg>`;
+	return `url("data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}") 5 5, crosshair`;
+}
+let penCursorUrl = buildPenCursorUrl(currentColor);
 
 const ERASER_CURSOR_SVG = `
 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20">
@@ -105,6 +114,13 @@ const newBtn = document.getElementById('newBtn');
 const delayBtn = document.getElementById('delayBtn');
 const copyBtn = document.getElementById('copyBtn');
 const penBtn = document.getElementById('penBtn');
+const rectBtn = document.getElementById('rectBtn');
+const styleBtn = document.getElementById('styleBtn');
+const styleMenu = document.getElementById('styleMenu');
+const styleSwatch = document.getElementById('styleSwatch');
+const colorRow = document.getElementById('colorRow');
+const widthRow = document.getElementById('widthRow');
+const fillCheck = document.getElementById('fillCheck');
 const undoBtn = document.getElementById('undoBtn');
 const redoBtn = document.getElementById('redoBtn');
 const eraserBtn = document.getElementById('eraserBtn');
@@ -191,8 +207,8 @@ const screenCanvas = document.getElementById('screenCanvas');
 const screenCtx = screenCanvas.getContext('2d');
 const selectionRectEl = document.getElementById('selectionRect');
 
-let activeTool = 'none'; // 'none' | 'pen' | 'eraser'
-let strokes = []; // Array of { points: [{x,y}], color, width }
+let activeTool = 'none'; // 'none' | 'pen' | 'rect' | 'eraser'
+let strokes = []; // Array of pen { type:'pen', points: [{x,y}], color, width } or rect { type:'rect', x, y, w, h, color, width }
 let baseImageCanvas = null; // Stores the clean screenshot
 
 let pendingAutoSaveType = null; // null | 'save' | 'save-as'
@@ -293,12 +309,19 @@ let historyStack = [];
 let historyIndex = -1;
 
 function updateEraserButtonState() {
-	// Show eraser whenever we're in drawing mode; hide it elsewhere (e.g. selection/crop overlay).
+	// Show eraser/rect/style whenever we're in drawing mode; hide elsewhere (e.g. selection/crop overlay).
 	// Note: overlayMap is populated on the next animation frame, so use DOM visibility instead.
 	const inCropMode = selectionOverlay.style.display !== 'none' && selectionOverlay.style.display !== '';
 	const inDrawingMode = !!imageRect && !inCropMode;
 	eraserBtn.disabled = !inDrawingMode;
 	eraserBtn.classList.toggle('hidden', !inDrawingMode);
+	rectBtn.disabled = !inDrawingMode;
+	rectBtn.classList.toggle('hidden', !inDrawingMode);
+	styleBtn.disabled = !inDrawingMode;
+	styleBtn.classList.toggle('hidden', !inDrawingMode);
+	if (!inDrawingMode) {
+		styleMenu.classList.remove('show');
+	}
 }
 
 /** Selection overlay mapping */
@@ -324,6 +347,8 @@ function setHasCapture(hasCapture) {
 	} else {
 		copyBtn.classList.add('hidden');
 		penBtn.classList.add('hidden');
+		rectBtn.classList.add('hidden');
+		styleBtn.classList.add('hidden');
 		eraserBtn.classList.add('hidden');
 		undoBtn.classList.add('hidden');
 		redoBtn.classList.add('hidden');
@@ -355,6 +380,7 @@ function showCopyFeedback() {
 function resetState() {
 	activeTool = 'none';
 	penBtn.classList.remove('active');
+	rectBtn.classList.remove('active');
 	eraserBtn.classList.remove('active');
 	canvasContainer.classList.remove('show');
 	dropZone.classList.add('show');
@@ -454,7 +480,32 @@ function redrawCanvas() {
 	strokeBounds = null;
 
 	for (const stroke of strokes) {
-		if (stroke.points.length < 2) continue;
+		if (stroke.type === 'rect') {
+			drawingCtx.strokeStyle = stroke.color;
+			drawingCtx.lineWidth = stroke.width * dpr;
+			if (stroke.fill) {
+				drawingCtx.fillStyle = stroke.fill;
+				drawingCtx.fillRect(stroke.x, stroke.y, stroke.w, stroke.h);
+			}
+			drawingCtx.beginPath();
+			drawingCtx.rect(stroke.x, stroke.y, stroke.w, stroke.h);
+			drawingCtx.stroke();
+
+			const half = stroke.width / 2;
+			const x1 = Math.min(stroke.x, stroke.x + stroke.w);
+			const y1 = Math.min(stroke.y, stroke.y + stroke.h);
+			const x2 = Math.max(stroke.x, stroke.x + stroke.w);
+			const y2 = Math.max(stroke.y, stroke.y + stroke.h);
+			strokeBounds = unionBounds(strokeBounds, {
+				minX: x1 - half,
+				minY: y1 - half,
+				maxX: x2 + half,
+				maxY: y2 + half,
+			});
+			continue;
+		}
+
+		if (!stroke.points || stroke.points.length < 2) continue;
 		drawingCtx.strokeStyle = stroke.color;
 		drawingCtx.lineWidth = stroke.width * dpr;
 		drawingCtx.beginPath();
@@ -650,7 +701,11 @@ async function renderOutputBlob() {
 	});
 }
 
-async function copyCurrentOutputToClipboard(showFeedback = false) {
+async function copyCurrentOutputToClipboard(opts = {}) {
+	// Back-compat: a bare boolean is treated as { feedback }.
+	if (typeof opts === 'boolean') opts = { feedback: opts };
+	const { feedback = false, fallbackDownload = false } = opts;
+
 	// Helper to get the blob
 	async function getBlobForCopy() {
 		let blob = await renderOutputBlob();
@@ -671,7 +726,7 @@ async function copyCurrentOutputToClipboard(showFeedback = false) {
 				new ClipboardItem({ 'image/png': getBlobForCopy() })
 			]);
 			
-			if (showFeedback) {
+			if (feedback) {
 				showCopyFeedback();
 			}
 			return;
@@ -684,8 +739,8 @@ async function copyCurrentOutputToClipboard(showFeedback = false) {
 	const blob = await getBlobForCopy();
 	if (!blob) return;
 
-	// Fallback: Use Web Share API (works on iOS Safari)
-	if (navigator.canShare && navigator.share) {
+	// Fallback: Use Web Share API (works on iOS Safari) — only if explicit user action.
+	if (fallbackDownload && navigator.canShare && navigator.share) {
 		try {
 			const file = new File([blob], 'screenshot.png', { type: 'image/png' });
 			if (navigator.canShare({ files: [file] })) {
@@ -693,7 +748,7 @@ async function copyCurrentOutputToClipboard(showFeedback = false) {
 					files: [file],
 					title: 'Screenshot'
 				});
-				if (showFeedback) {
+				if (feedback) {
 					showCopyFeedback();
 				}
 				return;
@@ -703,7 +758,11 @@ async function copyCurrentOutputToClipboard(showFeedback = false) {
 		}
 	}
 
-	// Final fallback: download the image
+	// Final fallback: download the image — ONLY when the caller explicitly opted in
+	// (the Copy button). All implicit auto-copies (post-capture, post-crop, post-stroke)
+	// must never silently save a file; saving is reserved for the Save button.
+	if (!fallbackDownload) return;
+
 	const url = URL.createObjectURL(blob);
 	const a = document.createElement('a');
 	a.href = url;
@@ -712,7 +771,7 @@ async function copyCurrentOutputToClipboard(showFeedback = false) {
 	a.click();
 	a.remove();
 	URL.revokeObjectURL(url);
-	if (showFeedback) {
+	if (feedback) {
 		showCopyFeedback();
 	}
 }
@@ -1003,8 +1062,11 @@ function showSelectionOverlay(frameCanvas, autoCopy = true) {
 	penBtn.disabled = false;
 	// Copy is allowed in crop mode (copies full frame)
 	copyBtn.disabled = false;
-	// Hide eraser in crop mode (vs pen mode)
+	// Hide eraser/rect/style in crop mode (vs pen mode)
 	eraserBtn.classList.add('hidden');
+	rectBtn.classList.add('hidden');
+	styleBtn.classList.add('hidden');
+	styleMenu.classList.remove('show');
 	updateEraserButtonState();
 	
 	// Show discard button for image capture mode
@@ -1173,12 +1235,17 @@ async function onOverlayPointerUp(ev) {
 function setActiveTool(tool) {
 	activeTool = tool;
 	penBtn.classList.toggle('active', activeTool === 'pen');
+	rectBtn.classList.toggle('active', activeTool === 'rect');
 	eraserBtn.classList.toggle('active', activeTool === 'eraser');
 	
 	if (activeTool === 'pen') {
-		drawingCanvas.style.cursor = PEN_CURSOR_URL;
+		drawingCanvas.style.cursor = penCursorUrl;
 		// Show tooltip when entering pen mode
 		tooltipText.textContent = t('penModeHint');
+		userTooltip.classList.add('show');
+	} else if (activeTool === 'rect') {
+		drawingCanvas.style.cursor = 'crosshair';
+		tooltipText.textContent = t('rectModeHint');
 		userTooltip.classList.add('show');
 	} else if (activeTool === 'eraser') {
 		drawingCanvas.style.cursor = ERASER_CURSOR_URL;
@@ -1216,11 +1283,34 @@ function eraseStrokeAt(pt) {
 	for (let i = strokes.length - 1; i >= 0; i--) {
 		const stroke = strokes[i];
 		let hit = false;
-		for (let j = 0; j < stroke.points.length - 1; j++) {
-			const dist = distanceToSegment(pt, stroke.points[j], stroke.points[j+1]);
-			if (dist < threshold) {
+
+		if (stroke.type === 'rect') {
+			const x1 = Math.min(stroke.x, stroke.x + stroke.w);
+			const y1 = Math.min(stroke.y, stroke.y + stroke.h);
+			const x2 = Math.max(stroke.x, stroke.x + stroke.w);
+			const y2 = Math.max(stroke.y, stroke.y + stroke.h);
+			// Filled rectangles: any point inside the rect counts as a hit (typical UX).
+			if (stroke.fill && pt.x >= x1 && pt.x <= x2 && pt.y >= y1 && pt.y <= y2) {
 				hit = true;
-				break;
+			} else {
+				const corners = [
+					{x: x1, y: y1}, {x: x2, y: y1},
+					{x: x2, y: y2}, {x: x1, y: y2},
+				];
+				for (let k = 0; k < 4; k++) {
+					if (distanceToSegment(pt, corners[k], corners[(k + 1) % 4]) < threshold) {
+						hit = true;
+						break;
+					}
+				}
+			}
+		} else if (stroke.points) {
+			for (let j = 0; j < stroke.points.length - 1; j++) {
+				const dist = distanceToSegment(pt, stroke.points[j], stroke.points[j+1]);
+				if (dist < threshold) {
+					hit = true;
+					break;
+				}
 			}
 		}
 		
@@ -1243,24 +1333,36 @@ function onCanvasPointerDown(ev) {
 	if (activeTool === 'pen') {
 		drawingCtx.lineCap = 'round';
 		drawingCtx.lineJoin = 'round';
-		drawingCtx.strokeStyle = PEN_COLOR;
-		drawingCtx.lineWidth = PEN_WIDTH * (window.devicePixelRatio || 1);
+		drawingCtx.strokeStyle = currentColor;
+		drawingCtx.lineWidth = currentWidth * (window.devicePixelRatio || 1);
 
 		drawingCtx.beginPath();
 		drawingCtx.moveTo(lastPt.x, lastPt.y);
 
 		strokes.push({
+			type: 'pen',
 			points: [{x: lastPt.x, y: lastPt.y}],
-			color: PEN_COLOR,
-			width: PEN_WIDTH
+			color: currentColor,
+			width: currentWidth
 		});
 
-		const half = PEN_WIDTH / 2;
+		const half = currentWidth / 2;
 		strokeBounds = unionBounds(strokeBounds, {
 			minX: lastPt.x - half,
 			minY: lastPt.y - half,
 			maxX: lastPt.x + half,
 			maxY: lastPt.y + half,
+		});
+	} else if (activeTool === 'rect') {
+		strokes.push({
+			type: 'rect',
+			x: lastPt.x,
+			y: lastPt.y,
+			w: 0,
+			h: 0,
+			color: currentColor,
+			width: currentWidth,
+			fill: rectFill ? currentColor : null,
 		});
 	} else if (activeTool === 'eraser') {
 		if (eraseStrokeAt(lastPt)) {
@@ -1278,15 +1380,21 @@ function onCanvasPointerMove(ev) {
 		drawingCtx.lineTo(pt.x, pt.y);
 		drawingCtx.stroke();
 		
-		strokes[strokes.length - 1].points.push({x: pt.x, y: pt.y});
+		const current = strokes[strokes.length - 1];
+		current.points.push({x: pt.x, y: pt.y});
 
-		const half = PEN_WIDTH / 2;
+		const half = current.width / 2;
 		strokeBounds = unionBounds(strokeBounds, {
 			minX: pt.x - half,
 			minY: pt.y - half,
 			maxX: pt.x + half,
 			maxY: pt.y + half,
 		});
+	} else if (activeTool === 'rect') {
+		const current = strokes[strokes.length - 1];
+		current.w = pt.x - current.x;
+		current.h = pt.y - current.y;
+		redrawCanvas();
 	} else if (activeTool === 'eraser') {
 		if (eraseStrokeAt(pt)) {
 			redrawCanvas();
@@ -1304,6 +1412,17 @@ async function onCanvasPointerUp(ev) {
 		drawingCanvas.releasePointerCapture(ev.pointerId);
 	} catch {
 		// ignore
+	}
+
+	// Drop empty/zero-area rectangles created by a click without drag.
+	if (activeTool === 'rect' && strokes.length > 0) {
+		const last = strokes[strokes.length - 1];
+		if (last.type === 'rect' && Math.abs(last.w) < 2 && Math.abs(last.h) < 2) {
+			strokes.pop();
+			redrawCanvas();
+			updateEraserButtonState();
+			return;
+		}
 	}
 
 	saveHistory();
@@ -1359,7 +1478,8 @@ document.addEventListener('click', () => {
 	delayMenu.classList.remove('show');
 	if (heroDelayMenu) heroDelayMenu.classList.remove('show');
 	saveMenu.classList.remove('show');
-	if (langDropdown) langDropdown.classList.remove('show');
+	styleMenu.classList.remove('show');
+	// Note: lang dropdown closes itself via setupLanguagePicker's own outside-click handler.
 });
 
 saveOptionsBtn.addEventListener('click', (e) => {
@@ -1376,7 +1496,7 @@ saveMenu.addEventListener('click', async (e) => {
 	}
 });
 
-copyBtn.addEventListener('click', () => copyCurrentOutputToClipboard(true));
+copyBtn.addEventListener('click', () => copyCurrentOutputToClipboard({ feedback: true, fallbackDownload: true }));
 
 undoBtn.addEventListener('click', undo);
 redoBtn.addEventListener('click', redo);
@@ -1456,8 +1576,19 @@ penBtn.addEventListener('click', () => {
 	}
 });
 
+rectBtn.addEventListener('click', () => {
+	// Rectangle tool only works in drawing mode (not in crop mode)
+	if (!imageRect) return;
+	if (selectionOverlay.style.display !== 'none' && selectionOverlay.style.display !== '') return;
+
+	if (activeTool === 'rect') {
+		return;
+	}
+	setActiveTool('rect');
+});
+
 eraserBtn.addEventListener('click', () => {
-	// Eraser only works in pen mode, not in crop mode
+	// Eraser only works in drawing mode, not in crop mode
 	if (!imageRect) return;
 	if (selectionOverlay.style.display !== 'none' && selectionOverlay.style.display !== '') return;
 	
@@ -1466,6 +1597,71 @@ eraserBtn.addEventListener('click', () => {
 	}
 	setActiveTool('eraser');
 });
+
+// ============ Style picker (color / width / fill) ============
+function updateStyleSwatch() {
+	if (!styleSwatch) return;
+	styleSwatch.style.background = currentColor;
+}
+
+function setColor(color) {
+	currentColor = color;
+	updateStyleSwatch();
+	// Refresh pen cursor so it reflects the new color when pen is active.
+	penCursorUrl = buildPenCursorUrl(currentColor);
+	if (activeTool === 'pen') {
+		drawingCanvas.style.cursor = penCursorUrl;
+	}
+	colorRow.querySelectorAll('.color-swatch').forEach(b => {
+		b.classList.toggle('active', b.dataset.color === color);
+	});
+}
+
+function setStrokeWidth(width) {
+	currentWidth = width;
+	widthRow.querySelectorAll('.width-opt').forEach(b => {
+		b.classList.toggle('active', parseInt(b.dataset.width, 10) === width);
+	});
+}
+
+function setRectFill(enabled) {
+	rectFill = !!enabled;
+	if (fillCheck) fillCheck.checked = rectFill;
+}
+
+styleBtn.addEventListener('click', (e) => {
+	e.stopPropagation();
+	if (styleBtn.disabled) return;
+	// Close other dropdowns first.
+	delayMenu.classList.remove('show');
+	if (heroDelayMenu) heroDelayMenu.classList.remove('show');
+	saveMenu.classList.remove('show');
+	styleMenu.classList.toggle('show');
+});
+
+// Keep the menu open while interacting with its inner controls.
+styleMenu.addEventListener('click', (e) => e.stopPropagation());
+
+colorRow.addEventListener('click', (e) => {
+	const swatch = e.target.closest('.color-swatch');
+	if (!swatch) return;
+	setColor(swatch.dataset.color);
+});
+
+widthRow.addEventListener('click', (e) => {
+	const opt = e.target.closest('.width-opt');
+	if (!opt) return;
+	setStrokeWidth(parseInt(opt.dataset.width, 10));
+});
+
+if (fillCheck) {
+	fillCheck.addEventListener('change', () => setRectFill(fillCheck.checked));
+}
+
+// Initialize style UI from defaults.
+setColor(currentColor);
+setStrokeWidth(currentWidth);
+setRectFill(rectFill);
 
 selectionOverlay.addEventListener('pointerdown', onOverlayPointerDown);
 selectionOverlay.addEventListener('pointermove', onOverlayPointerMove);
@@ -1728,6 +1924,8 @@ function showVideoPreview(blob) {
 	// Hide image-specific annotation buttons
 	copyBtn.classList.add('hidden');
 	penBtn.classList.add('hidden');
+	rectBtn.classList.add('hidden');
+	styleBtn.classList.add('hidden');
 	eraserBtn.classList.add('hidden');
 	undoBtn.classList.add('hidden');
 	redoBtn.classList.add('hidden');

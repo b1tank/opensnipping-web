@@ -5,8 +5,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>OpenSnipping</title>
-  <link rel="icon" type="image/svg+xml" href="logo.svg">
-  <link rel="stylesheet" href="style.css">
+  <link rel="icon" type="image/svg+xml" href="src/assets/logo.svg">
+  <link rel="stylesheet" href="src/style.css">
   <!-- Fix WebM duration metadata for proper seeking in external players -->
   <script src="https://cdn.jsdelivr.net/npm/fix-webm-duration@1.0.6/fix-webm-duration.min.js"></script>
 </head>
@@ -18,7 +18,7 @@
       <!-- Left section: Logo and branding -->
       <div class="toolbar-left">
         <a href="../" class="logo-link" title="Back to Yummy Jars">
-          <img src="logo-with-text.svg" alt="OpenSnipping" class="logo">
+          <img src="src/assets/logo-with-text.svg" alt="OpenSnipping" class="logo">
         </a>
       </div>
 
@@ -41,7 +41,7 @@
         </div>
 
         <button class="toolbar-btn" id="newBtn" data-i18n-title="newSnipTitle" title="New Snip">
-          <img src="logo.svg" class="btn-icon" alt="New Snip">
+          <img src="src/assets/logo.svg" class="btn-icon" alt="New Snip">
           <span class="btn-text" data-i18n="newSnip">New</span>
         </button>
 
@@ -118,6 +118,47 @@
             <circle cx="11" cy="11" r="2" stroke-width="2" />
           </svg>
         </button>
+
+        <button class="toolbar-btn hidden" id="rectBtn" data-i18n-title="rectTitle" title="Rectangle">
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <rect x="4" y="6" width="16" height="12" rx="1" stroke-width="2" />
+          </svg>
+        </button>
+
+        <div class="style-btn-wrapper">
+          <button class="toolbar-btn hidden" id="styleBtn" data-i18n-title="styleTitle" title="Style">
+            <span class="style-swatch" id="styleSwatch"></span>
+            <svg class="dropdown-arrow" viewBox="0 0 12 12" fill="currentColor">
+              <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"
+                stroke-linejoin="round" />
+            </svg>
+          </button>
+          <div class="dropdown-menu style-menu" id="styleMenu">
+            <div class="style-section">
+              <div class="style-label" data-i18n="styleColor">Color</div>
+              <div class="color-row" id="colorRow">
+                <button class="color-swatch active" data-color="#d10000" style="background:#d10000" title="Red"></button>
+                <button class="color-swatch" data-color="#f97316" style="background:#f97316" title="Orange"></button>
+                <button class="color-swatch" data-color="#facc15" style="background:#facc15" title="Yellow"></button>
+                <button class="color-swatch" data-color="#10b981" style="background:#10b981" title="Green"></button>
+                <button class="color-swatch" data-color="#3b82f6" style="background:#3b82f6" title="Blue"></button>
+                <button class="color-swatch" data-color="#111827" style="background:#111827" title="Black"></button>
+              </div>
+            </div>
+            <div class="style-section">
+              <div class="style-label" data-i18n="styleWidth">Width</div>
+              <div class="width-row" id="widthRow">
+                <button class="width-opt" data-width="2" title="Thin"><span class="width-dot" style="width:4px;height:4px"></span></button>
+                <button class="width-opt active" data-width="4" title="Medium"><span class="width-dot" style="width:8px;height:8px"></span></button>
+                <button class="width-opt" data-width="8" title="Thick"><span class="width-dot" style="width:14px;height:14px"></span></button>
+              </div>
+            </div>
+            <label class="fill-row">
+              <input type="checkbox" id="fillCheck">
+              <span class="fill-text" data-i18n="styleFillRect">Fill rectangle</span>
+            </label>
+          </div>
+        </div>
 
         <button class="toolbar-btn hidden" id="undoBtn" data-i18n-title="undoTitle" title="Undo" disabled>
           <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -209,7 +250,7 @@
             <div class="hero-split-btn">
               <!-- The main button part -->
               <button id="heroNewBtn" class="hero-main-btn">
-                <img src="logo.svg" class="hero-icon" alt="" id="heroActionIcon">
+                <img src="src/assets/logo.svg" class="hero-icon" alt="" id="heroActionIcon">
                 <span id="heroBtnText" data-i18n="newSnip">New</span>
               </button>
               <!-- The dropdown arrow part -->
@@ -339,7 +380,7 @@
     </div>
   </div>
 
-  <script type="module" src="app.js"></script>
+  <script type="module" src="src/app.js"></script>
 </body>
 
 </html>

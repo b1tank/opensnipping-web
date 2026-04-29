@@ -1,0 +1,12 @@
+.playwright-mcp
+test-results
+playwright-report
+.tmp
+
+# Maintainer secrets / convenience env files (not needed for self-hosting).
+.env*
+
+# Personal launch / planning notes (not meant for the public repo).
+LAUNCH.md
+TODO.md
+video-plan.md

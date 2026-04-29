@@ -1,5 +1,5 @@
 {
   "name": "OpenSnipping",
   "description": "Browser screenshot & annotation tool",
-  "icon": "logo.svg"
+  "icon": "src/assets/logo.svg"
 }
