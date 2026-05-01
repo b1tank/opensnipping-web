@@ -2,9 +2,8 @@
 # ============================================================================
 # Maintainer-only convenience script.
 #
-# Deploys OpenSnipping to the maintainer's LAN-only YummyJars instance.
-# This is unreachable from GitHub Actions, so there's no CI equivalent.
-# External contributors do not need this; see README.md → "Self-host".
+# Deploys OpenSnipping to a private instance. External contributors
+# do not need this; see README.md → "Self-host".
 #
 # Usage (from repo root):
 #   set -a && source .env.lan && set +a && ./scripts/deploy-lan.sh
@@ -17,7 +16,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT"
 
 SLUG="opensnipping"
-TARGET="${YUMMYJARS_LAN_URL:-https://my.yummyjars.com}"
+TARGET="${YUMMYJARS_LAN_URL:?YUMMYJARS_LAN_URL not set}"
 
 echo "📦 Deploying $SLUG to $TARGET..."
 tar czf - \
@@ -25,11 +24,7 @@ tar czf - \
   --exclude='.env' \
   --exclude='.env.*' \
   --exclude='scripts' \
-  --exclude='tests' \
   --exclude='.github' \
-  --exclude='TODO.md' \
-  --exclude='video-plan.md' \
-  --exclude='LAUNCH.md' \
   --exclude='.playwright-mcp' \
   . | curl -sSf -X POST \
     -H "X-API-Key: ${YUMMYJARS_KEY:?YUMMYJARS_KEY not set}" \

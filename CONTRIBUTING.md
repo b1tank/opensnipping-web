@@ -1,4 +1,4 @@
-# Contributing to OpenSnipping
+# Contributing to OpenSnipping Web
 
 Thanks for your interest! OpenSnipping aims to stay tiny, dependency-free, and
 privacy-first. Contributions that align with those values are very welcome.
