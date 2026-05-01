@@ -24,7 +24,7 @@ coordinated case-by-case but typically 90 days.
 In scope:
 
 - The static app served from this repository
-- The included third-party CDN script (`fix-webm-duration`)
+- The vendored third-party script (`src/lib/fix-webm-duration.min.js`)
 - Browser permission misuse (camera/mic/screen)
 
 Out of scope:

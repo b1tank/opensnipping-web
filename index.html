@@ -7,8 +7,9 @@
   <title>OpenSnipping</title>
   <link rel="icon" type="image/svg+xml" href="src/assets/logo.svg">
   <link rel="stylesheet" href="src/style.css">
-  <!-- Fix WebM duration metadata for proper seeking in external players -->
-  <script src="https://cdn.jsdelivr.net/npm/fix-webm-duration@1.0.6/fix-webm-duration.min.js"></script>
+  <!-- Fix WebM duration metadata for proper seeking in external players.
+       Self-hosted so the page makes zero third-party requests (see README → Privacy). -->
+  <script src="src/lib/fix-webm-duration.min.js"></script>
 </head>
 
 <body>

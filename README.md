@@ -20,7 +20,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License"></a>
-  <img src="https://img.shields.io/badge/dependencies-1-brightgreen.svg" alt="1 dependency">
+  <img src="https://img.shields.io/badge/dependencies-0-brightgreen.svg" alt="Zero runtime dependencies">
   <img src="https://img.shields.io/badge/build-no--build-orange.svg" alt="No build step">
   <img src="https://img.shields.io/badge/privacy-100%25%20local-success.svg" alt="100% local">
 </p>
@@ -53,9 +53,11 @@ and annotations are processed locally and **never leave your device**.
 - ❌ No backend
 - ❌ No analytics or telemetry
 - ❌ No signup, no email, no cookies
-- ✅ One CDN dependency: [`fix-webm-duration`](https://github.com/yusitnikov/fix-webm-duration)
-  (~3 KB) so your saved recordings seek correctly in VLC and other players.
-  You can verify in DevTools → Network that no other requests are made.
+- ❌ No third-party requests — every script and asset is served from
+  the same origin as the page. The only runtime helper,
+  [`fix-webm-duration`](https://github.com/yusitnikov/fix-webm-duration)
+  (~14 KB), is vendored at [`src/lib/fix-webm-duration.min.js`](src/lib/fix-webm-duration.min.js).
+  You can verify in DevTools → Network that no cross-origin requests are made.
 
 [Read the security policy →](SECURITY.md)
 
